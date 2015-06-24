@@ -87,11 +87,11 @@ class JEVisConnector:
 		self.R = requests.get(url, auth=self.AUTH)
 		
 		print("Status: ", self.R.status_code)
-		print(r.headers['Content-disposition'].split("filename=")[1].strip('"'))
+		print(self.R.headers['Content-disposition'].split("filename=")[1].strip('"'))
 		print(self.R.content)
 		f = dict()
-		f['name'] = r.headers['Content-disposition'].split("filename=")[1].strip('"')
-		f['content'] = r.content
+		f['name'] = self.R.headers['Content-disposition'].split("filename=")[1].strip('"')
+		f['content'] = self.R.content
 		
 		print("received file ", f['name'], " with content:")
 		print(f['content'])
