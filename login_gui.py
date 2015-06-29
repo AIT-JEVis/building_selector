@@ -1,18 +1,19 @@
 from __future__ import print_function
+from __future__ import unicode_literals
+
+import os
+
 # use cross tkinter cross python versions
 try:
 	import tkinter as tk
 	from tkinter import ttk
+	import configparser
 except ImportError:
 	import Tkinter as tk # for python version < 3.0
 	import ttk
-
-import os
-try:
-	import configparser
-except ImportError:
 	import ConfigParser as configparser
 
+from jevis_api import JEVisConnector
 
 class JEVisWebServiceLogin:
 	login_file = "login.conf"
@@ -20,12 +21,25 @@ class JEVisWebServiceLogin:
 	server = ("")
 	username = ("")
 	password = ("")
+	connected = False
 	
-	def __init__(self):
+	def __init__(self, login_file="login.conf"):
+		self.login_file = login_file
 		self.init_GUI()
 		self.read_from_config(self.login_file)
+		self.update_entries()
 		self.window.mainloop()
 		
+	def is_connected(self):
+		return self.connected
+	
+	def get_login_credentials(self):
+		credentials = dict()
+		credentials['server'] = self.server
+		credentials['username'] = self.username
+		credentials['password'] = self.password
+		return credentials
+	
 	def grid_config(self, entry, column, row):
 		entry.grid(column=column, row=row, padx=10, pady=10, sticky='nsew')
 		
@@ -56,17 +70,28 @@ class JEVisWebServiceLogin:
 	
 		config.write(open(login_file, 'w'))
 	
-	def btn_OK_click(self):
-		self.read_from_config(self.login_file)
-		import sys
-		sys.stdout.flush()
-		self.update_entries()
-	
-	def btn_write_click(self):
+	def btn_login_click(self):
 		self.update_vars()
+		if (not self.server) or (not self.username) or (not self.password):
+			msg = "Please fill every form"
+			print(msg)
+			return
+		
+		con = JEVisConnector(self.server, self.username, self.password)
+		if (not con.isConnected()):
+			print("Error: could not connect!")
+			return
+		
+		print("Connection etablished, writing to config-file")
+		self.connected = True
 		self.write_to_config(self.login_file)
 		import sys
 		sys.stdout.flush()
+		self.window.destroy()
+	
+	def btn_cancel_click(self):
+		print("Login aborted by user")
+		exit(1)
 		
 	def init_GUI(self):
 		self.window = tk.Tk()
@@ -79,6 +104,10 @@ class JEVisWebServiceLogin:
 		server_text = ttk.Label(self.window, text="Server:")
 		server_info = ttk.Label(self.window,
 						  text="for example 'http://localhost:8080/JEWebService/v1'")
+		info_text = "for example 'http://localhost:8080/JEWebService/v1'"
+		server_info = tk.Text(self.window, height=1)
+		server_info.insert(1.0, info_text)
+		server_info.configure(state="disabled")
 		self.server_entry = ttk.Entry(self.window, width=50)
 		
 		self.grid_config(server_text, column=0, row=row)
@@ -100,12 +129,12 @@ class JEVisWebServiceLogin:
 		row +=1
 		
 		# create buttons
-		btn_OK = ttk.Button(self.window, text="OK", command=self.btn_OK_click)
-		btn_OK.grid(column=1,row=row, padx=10, pady=10, sticky='nw')
-		btn_OK = ttk.Button(self.window, text="Write", command=self.btn_write_click)
-		btn_OK.grid(column=0,row=row, padx=10, pady=10, sticky='nw')
+		btn_login = ttk.Button(self.window, text="Login", command=self.btn_login_click)
+		btn_login.grid(column=1,row=row, padx=10, pady=10, sticky='nw')
+		btn_cancel = ttk.Button(self.window, text="Cancel", command=self.btn_cancel_click)
+		btn_cancel.grid(column=0,row=row, padx=10, pady=10, sticky='nw')
 		
-		self.password_entry.bind('<Return>', self.btn_OK_click)
+		self.password_entry.bind('<Return>', self.btn_login_click)
 		
 		# properly resize window
 		ttk.Sizegrip().grid(column=1, row=row, sticky='se')

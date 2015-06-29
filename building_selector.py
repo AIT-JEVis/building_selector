@@ -1,4 +1,6 @@
 from __future__ import print_function
+from __future__ import unicode_literals
+
 # use cross tkinter cross python versions
 try:
     from tkinter import *
@@ -9,9 +11,12 @@ except ImportError:
 import base64
 import unicodedata
 from jevis_api import JEVisConnector
+from login_gui import JEVisWebServiceLogin
 
 class Selector:
 
+	list_height=15
+	
 	def btn_ok_click(self):
 		items = self.l.curselection()
 		if len(items) == 0:
@@ -26,19 +31,29 @@ class Selector:
 
 	def getgbXML(self, id):
 		f = self.con.getLatestFile(id, 'gbXML File')
+		
+	def get_login_credentials(self):
+		self.login_gui = JEVisWebServiceLogin()
+		if not self.login_gui.is_connected():
+			print("Error: No valid login provided.")
+			exit(1)
+		
+		self.credentials = self.login_gui.get_login_credentials()
 
 	def __init__(self):
+		self.get_login_credentials()
+		
 		self.root = Tk()
 		self.root.title("Select Building")
 
-		self.con = JEVisConnector("http://localhost:8080/JEWebService/v1", "Sys Admin", "jevis")
-		if self.con.isConnected() == FALSE:
+		self.con = JEVisConnector(self.credentials['server'],
+							self.credentials['username'], self.credentials['password'])
+		if not self.con.isConnected():
 			print("Cannot connect to JEVis WebService. status: ", self.con.getStatusCode())
-			print(self.con.getLastRequest().json())
 			exit(1)
 
 		# setup GUI
-		self.l = Listbox(self.root, height=5)
+		self.l = Listbox(self.root, height=self.list_height)
 		self.l.grid(column=0, row=0, sticky=(N,W,E,S))
 		self.s = ttk.Scrollbar(self.root, orient=VERTICAL, command=self.l.yview)
 		self.s.grid(column=1, row=0, sticky=(N,S))
@@ -56,9 +71,13 @@ class Selector:
 
 		self.ids = []
 		for b in buildings['Object']:
-			self.l.insert('end', "{} | {}".format(b['id'], unicodedata.normalize('NFKD', b['name']).encode('ascii','ignore')) )
-			self.ids.append(b['id'])
-			print(b['id'])
+			id = b['id']
+			from builtins import str
+			val_cleaned = unicodedata.normalize('NFKD', b['name']).encode('ascii','ignore')
+			val = val_cleaned.decode()
+			print(id,"|", val_cleaned, "|", val)
+			self.l.insert('end', "{} | {}".format(id, val) )
+			self.ids.append(id)
 
 		print(self.ids)
 		self.b = ttk.Button(self.root, text="OK", command=self.btn_ok_click)

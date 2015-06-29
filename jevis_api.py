@@ -1,4 +1,6 @@
 from __future__ import print_function
+from __future__ import unicode_literals
+
 import requests
 from requests.exceptions import ConnectionError
 from requests.auth import HTTPBasicAuth
@@ -31,6 +33,8 @@ class JEVisConnector:
 
 	def getStatusCode(self):
 		# TODO: error handling
+		if self.R == None:
+			return 0
 		return self.R.status_code
 
 	def getObject(self, id):
