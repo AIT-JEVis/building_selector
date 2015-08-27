@@ -1,6 +1,8 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import io
+import os
 import requests
 from requests.exceptions import ConnectionError
 from requests.auth import HTTPBasicAuth
@@ -81,25 +83,38 @@ class JEVisConnector:
 				children.append(rel['from'])
 		return children
 
-	def getLatestFile(self, id, attribute):
+	def getLatestFile(self, id, attribute, filename=None):
 		url = self.SERVER + "/objects"
 		url += '/{}'.format(id)
 		url += '/attributes/{}'.format(attribute)
 		url += '/samples/Files?onlyLatest=true'
 		
-		print("url: ", url)
 		self.R = requests.get(url, auth=self.AUTH)
-		
-		print("Status: ", self.R.status_code)
-		print(self.R.headers['Content-disposition'].split("filename=")[1].strip('"'))
-		print(self.R.content)
 		f = dict()
 		f['name'] = self.R.headers['Content-disposition'].split("filename=")[1].strip('"')
 		f['content'] = self.R.content
-		
-		print("received file ", f['name'], " with content:")
-		print(f['content'])
+
+		if filename == None:
+			filename = f['name']
+
+		file_out = io.open(filename, 'wb')
+		file_out.write(f['content'])
+		file_out.close()
 		return f
 
+	def uploadFile(self, id, attribute, filename, remote_filename=None):
+		url = self.SERVER + "/objects"
+		url += '/{}'.format(id)
+		url += '/attributes/{}'.format(attribute)
+		url += '/samples/Files'
+		
+		# prepare file and set remote filename
+		if remote_filename == None:
+			remote_filename = os.path.basename(filename)
+		files = {'file': (remote_filename, io.open(filename, 'rb'))}
+
+		# upload file
+		self.R = requests.post(url, files=files, auth=self.AUTH)
+		return self.R
 
 
